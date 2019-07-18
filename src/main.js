@@ -15,7 +15,6 @@ const crud = (db = [], query = {}) => {
     return new Promise((resolve, reject) => {
         try {
             const permissionArray = [];
-            let permissionGiven = true;
             for (let i = 0; i < db.length; i++) {
                 const object = db[i];
 
@@ -30,78 +29,77 @@ const crud = (db = [], query = {}) => {
                 }
             }
 
-            if (permissionArray.length > 0) { console.log(33);
-                if (db.permission && db.permission.User_id) {
-                    const queryToPermission = {
-                        action: 'read',
-                        entity: 'Permission',
-                        object: {
-                            User_id: db.permission.User_id,
-                            crud: 'create',
-                            entity: 'User'
-                        }
+            if (permissionArray.length > 0) {
+                const queryToPermission = {
+                    action: 'read',
+                    entity: 'Permission',
+                    object: {
+                        User_id: permissionArray[0].User_id,
+                        crud: 'create',
+                        entity: 'User'
                     }
-
-                    permission(db, queryToPermission)
-                        .then(res => { console.log(res);
-                            if (res.length < 1) {
-                                resolve(res);
-                            } else {
-                                if (query.action === 'create') {
-                                    create(db, query)
-                                        .then(res => {
-                                            resolve(res);
-                                        })
-                                        .catch(rej => {
-                                            reject(rej);
-                                        });
-                                }
-    
-                                if (query.action === 'read') {
-                                    read(db, query)
-                                        .then(res => {
-                                            resolve(res);
-                                        })
-                                        .catch(rej => {
-                                            reject(rej);
-                                        })
-                                }
-    
-                                if (query.action === 'update') {
-                                    update(db, query)
-                                        .then(res => {
-                                            resolve(res);
-                                        })
-                                        .catch(rej => {
-                                            reject(rej);
-                                        })
-                                }
-    
-                                if (query.action === 'hardDelete') {
-                                    hardDelete(db, query)
-                                        .then(res => {
-                                            resolve(res);
-                                        })
-                                        .catch(rej => {
-                                            reject(rej);
-                                        })
-                                }
-    
-                                if (query.action === 'softDelete') {
-                                    softDelete(db, query)
-                                        .then(res => {
-                                            resolve(res);
-                                        })
-                                        .catch(rej => {
-                                            reject(rej);
-                                        })
-                                }
-                            }
-                        })
-                        .catch(rej => {
-                            reject(rej);
-                        })
                 }
+
+                permission(db, queryToPermission)
+                    .then(res => {
+                        console.log(res);
+                        if (res.length < 1) {
+                            resolve(res);
+                        } else {
+                            if (query.action === 'create') {
+                                create(db, query)
+                                    .then(res => {
+                                        resolve(res);
+                                    })
+                                    .catch(rej => {
+                                        reject(rej);
+                                    });
+                            }
+
+                            if (query.action === 'read') {
+                                read(db, query)
+                                    .then(res => {
+                                        resolve(res);
+                                    })
+                                    .catch(rej => {
+                                        reject(rej);
+                                    })
+                            }
+
+                            if (query.action === 'update') {
+                                update(db, query)
+                                    .then(res => {
+                                        resolve(res);
+                                    })
+                                    .catch(rej => {
+                                        reject(rej);
+                                    })
+                            }
+
+                            if (query.action === 'hardDelete') {
+                                hardDelete(db, query)
+                                    .then(res => {
+                                        resolve(res);
+                                    })
+                                    .catch(rej => {
+                                        reject(rej);
+                                    })
+                            }
+
+                            if (query.action === 'softDelete') {
+                                softDelete(db, query)
+                                    .then(res => {
+                                        resolve(res);
+                                    })
+                                    .catch(rej => {
+                                        reject(rej);
+                                    })
+                            }
+                        }
+                    })
+                    .catch(rej => {
+                        reject(rej);
+                    })
             }
         } catch (error) {
             reject(error);
