@@ -2,7 +2,7 @@ const crudPackage = require('../index');
 
 const db = [{
     name: "mongodb",
-    connection: "mongodb+srv://giryco:GiRyCo@2019QD@moderatoro-uo7is.gcp.mongodb.net/moderatoro?retryWrites=true",
+    connectionUri: "mongodb+srv://giryco:GiRyCo@2019QD@moderatoro-uo7is.gcp.mongodb.net/moderatoro?retryWrites=true",
     modelsDirectory: "/home/ofm/Projects/models/mongoose/"
 }];
 
