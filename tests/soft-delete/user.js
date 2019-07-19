@@ -1,4 +1,4 @@
-const crudPackage = require('../index');
+const crudPackage = require('../../index');
 
 const db = [
     {
@@ -13,17 +13,17 @@ const db = [
 ];
 
 const query = {
-    action: "read",
+    action: "softDelete",
     entity: "User",
     conditions: {
-        username: new RegExp(/[a-z]*ax/, 'i')
+        username: "sandro"
     }
 };
 
 crudPackage.crud(db, query)
     .then(res => {
-        console.log(res);
+        console.info(res);
     })
     .catch(rej => {
-        console.log(rej['message']);
+        console.error(rej['message']);
     })

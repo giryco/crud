@@ -5,6 +5,7 @@ const Sequelize = require('sequelize');
 // Packages
 const createDocumentPackage = require('../../create-document/index');
 const readDocumentPackage = require('../../read-document/index');
+const deleteDocumentPackage = require('../../delete-document/index')
 
 /**
  * 
@@ -20,10 +21,8 @@ const crud = (db = [], query = {}) => {
 
                 for (const key in object) {
                     if (object.hasOwnProperty(key)) {
-                        const element = object[key];
-
                         if (key === 'permission') {
-                            permissionArray.push(element);
+                            permissionArray.push(object);
                         }
                     }
                 }
@@ -33,72 +32,37 @@ const crud = (db = [], query = {}) => {
                 const queryToPermission = {
                     action: 'read',
                     entity: 'Permission',
-                    object: {
-                        User_id: permissionArray[0].User_id,
-                        crud: 'create',
-                        entity: 'User'
+                    conditions: {
+                        User_id: permissionArray[0].permission.User_id,
+                        crud: query.action,
+                        entity: query.entity
                     }
                 }
 
-                permission(db, queryToPermission)
+                permission([permissionArray[0]], queryToPermission)
                     .then(res => {
-                        console.log(res);
                         if (res.length < 1) {
                             resolve(res);
                         } else {
-                            if (query.action === 'create') {
-                                create(db, query)
-                                    .then(res => {
-                                        resolve(res);
-                                    })
-                                    .catch(rej => {
-                                        reject(rej);
-                                    });
-                            }
-
-                            if (query.action === 'read') {
-                                read(db, query)
-                                    .then(res => {
-                                        resolve(res);
-                                    })
-                                    .catch(rej => {
-                                        reject(rej);
-                                    })
-                            }
-
-                            if (query.action === 'update') {
-                                update(db, query)
-                                    .then(res => {
-                                        resolve(res);
-                                    })
-                                    .catch(rej => {
-                                        reject(rej);
-                                    })
-                            }
-
-                            if (query.action === 'hardDelete') {
-                                hardDelete(db, query)
-                                    .then(res => {
-                                        resolve(res);
-                                    })
-                                    .catch(rej => {
-                                        reject(rej);
-                                    })
-                            }
-
-                            if (query.action === 'softDelete') {
-                                softDelete(db, query)
-                                    .then(res => {
-                                        resolve(res);
-                                    })
-                                    .catch(rej => {
-                                        reject(rej);
-                                    })
-                            }
+                            crudAction(db, query)
+                                .then(resAction => {
+                                    resolve(resAction);
+                                })
+                                .catch(rejAction => {
+                                    reject(rejAction);
+                                });
                         }
                     })
                     .catch(rej => {
                         reject(rej);
+                    })
+            } else {
+                crudAction(db, query)
+                    .then(resAction => {
+                        resolve(resAction);
+                    })
+                    .catch(rejAction => {
+                        reject(rejAction);
                     })
             }
         } catch (error) {
@@ -107,7 +71,61 @@ const crud = (db = [], query = {}) => {
     })
 }
 
-const create = (db, query, index = 0) => {
+const crudAction = (db, query) => {
+    return new Promise((resolve, reject) => {
+        if (query.action === 'create') {
+            create(db, query)
+                .then(res => {
+                    resolve(res);
+                })
+                .catch(rej => {
+                    reject(rej);
+                });
+        }
+
+        if (query.action === 'read') {
+            read(db, query)
+                .then(res => {
+                    resolve(res);
+                })
+                .catch(rej => {
+                    reject(rej);
+                })
+        }
+
+        if (query.action === 'update') {
+            update(db, query)
+                .then(res => {
+                    resolve(res);
+                })
+                .catch(rej => {
+                    reject(rej);
+                })
+        }
+
+        if (query.action === 'hardDelete') {
+            hardDelete(db, query)
+                .then(res => {
+                    resolve(res);
+                })
+                .catch(rej => {
+                    reject(rej);
+                })
+        }
+
+        if (query.action === 'softDelete') {
+            softDelete(db, query)
+                .then(res => {
+                    resolve(res);
+                })
+                .catch(rej => {
+                    reject(rej);
+                })
+        }
+    })
+}
+
+const create = (db, query, index = 0, result = []) => {
     return new Promise((resolve, reject) => {
         try {
             if (db[index].name === 'mongodb') {
@@ -143,18 +161,21 @@ const create = (db, query, index = 0) => {
                             .then(docs => {
                                 if (index < (db.length - 1)) {
                                     const newIndex = index + 1;
-                                    create(db, query, newIndex)
+                                    result.push(docs);
+                                    create(db, query, newIndex, result)
                                         .then(resToRecursive => {
                                             resolve(resToRecursive);
                                             resConnection.disconnect();
                                         })
-                                        .then(rejToRecursive => {
+                                        .catch(rejToRecursive => {
                                             reject(rejToRecursive);
                                             resConnection.disconnect();
                                         })
+                                } else {
+                                    result.push(docs);
+                                    resolve(result);
+                                    resConnection.disconnect();
                                 }
-                                resolve(docs);
-                                resConnection.disconnect();
                             })
                             .catch(error => {
                                 reject(error);
@@ -174,15 +195,18 @@ const create = (db, query, index = 0) => {
                     .then(res => {
                         if (index < (db.length - 1)) {
                             const newIndex = index + 1;
-                            create(db, query, newIndex)
+                            result.push(res);
+                            create(db, query, newIndex, result)
                                 .then(resToRecursive => {
                                     resolve(resToRecursive);
                                 })
-                                .then(rejToRecursive => {
+                                .catch(rejToRecursive => {
                                     reject(rejToRecursive);
                                 })
+                        } else {
+                            result.push(res);
+                            resolve(result);
                         }
-                        resolve(res);
                     })
                     .catch(rej => {
                         reject(rej)
@@ -258,7 +282,7 @@ const read = (db, query, index = 0, result = []) => {
                         const modelConnected = resConnection.model(query.entity, modelSchema);
 
                         modelConnected
-                            .find(query.conditions)
+                            .find({$and:[{deletedAt: {$exists: false}, ...query.conditions}]})
                             .then(docs => {
                                 if (index < (db.length - 1)) {
                                     const newIndex = index + 1;
@@ -357,7 +381,7 @@ const update = (db, query, index = 0) => {
                             resConnection.disconnect();
                         }
                         modelConnected
-                            .updateMany(query.conditions, query.object)
+                            .updateMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]}, query.object)
                             .then(docs => {
                                 resolve(docs);
                                 resConnection.disconnect();
@@ -400,7 +424,7 @@ const update = (db, query, index = 0) => {
     })
 }
 
-const softDelete = (db, query, index = 0) => {
+const softDelete = (db, query, index = 0, result = []) => {
     return new Promise((resolve, reject) => {
         try {
             if (db[index].name === 'mongodb') {
@@ -418,12 +442,27 @@ const softDelete = (db, query, index = 0) => {
                         const modelConnected = resConnection.model(query.entity, modelSchema);
 
                         modelConnected
-                            .updateMany(query.conditions, {
+                            .updateMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]}, {
                                 deletedAt: new Date()
                             })
                             .then(docs => {
-                                resolve(docs);
-                                resConnection.disconnect();
+                                if (index < (db.length - 1)) {
+                                    const newIndex = index + 1;
+                                    result.push(docs);
+                                    softDelete(db, query, newIndex, result)
+                                        .then(resToRecursive => {
+                                            resolve(resToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                        .catch(rejToRecursive => {
+                                            reject(rejToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                } else {
+                                    result.push(docs);
+                                    resolve(result);
+                                    resConnection.disconnect();
+                                }
                             })
                             .catch(error => {
                                 reject(error);
@@ -436,26 +475,32 @@ const softDelete = (db, query, index = 0) => {
             }
 
             if (db[index].name === 'linuxdb') {
-                const timestamp = Date.now();
-                const filename = md5(timestamp + uniqueId + '@Anyt1nG');
-
-                const stringToFile = JSON.stringify(object);
-                if (fileDirectory.substr(-1) === '/') {
-                    fs.writeFileSync(fileDirectory + filename, stringToFile);
-                } else {
-                    fs.writeFileSync(fileDirectory + '/' + filename, stringToFile);
+                if (db[index].name === 'linuxdb') {
+                    const fileDirectory = db[index]['filesDirectory'];
+                    const collection = query.entity.toLowerCase();
+                    const objectJson = [query.conditions];
+    
+                    deleteDocumentPackage.softDelete(fileDirectory, collection, objectJson)
+                        .then(res => {
+                            if (index < (db.length - 1)) {
+                                const newIndex = index + 1;
+                                result.push(res);
+                                softDelete(db, query, newIndex, result)
+                                    .then(resToRecursive => {
+                                        resolve(resToRecursive);
+                                    })
+                                    .catch(rejToRecursive => {
+                                        reject(rejToRecursive);
+                                    })
+                            } else {
+                                result.push(res);
+                                resolve(result);
+                            }
+                        })
+                        .catch(rej => {
+                            reject(rej);
+                        })
                 }
-
-                let fileBuffer;
-
-                if (fileDirectory.substr(-1) === '/') {
-                    fileBuffer = fs.readFileSync(fileDirectory + filename);
-                } else {
-                    fileBuffer = fs.readFileSync(fileDirectory + '/' + filename);
-                }
-
-                const fileString = fileBuffer.toString();
-                resolve(fileString);
             }
         } catch (error) {
             reject(error);
@@ -463,7 +508,7 @@ const softDelete = (db, query, index = 0) => {
     })
 }
 
-const hardDelete = (db, query, index = 0) => {
+const hardDelete = (db, query, index = 0, result = []) => {
     return new Promise((resolve, reject) => {
         try {
             if (db[index].name === 'mongodb') {
@@ -475,16 +520,32 @@ const hardDelete = (db, query, index = 0) => {
                 const connect = mongoose.connect(db[index].connectionUri, {
                     useNewUrlParser: true
                 });
+
                 connect
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
 
                         modelConnected
-                            .deleteMany(query.conditions)
+                            .deleteMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]})
                             .then(docs => {
-                                resolve(docs);
-                                resConnection.disconnect();
+                                if (index < (db.length - 1)) {
+                                    const newIndex = index + 1;
+                                    result.push(docs);
+                                    hardDelete(db, query, newIndex, result)
+                                        .then(resToRecursive => {
+                                            resolve(resToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                        .catch(rejToRecursive => {
+                                            reject(rejToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                } else {
+                                    result.push(docs);
+                                    resolve(result);
+                                    resConnection.disconnect();
+                                }
                             })
                             .catch(error => {
                                 reject(error);
@@ -497,26 +558,30 @@ const hardDelete = (db, query, index = 0) => {
             }
 
             if (db[index].name === 'linuxdb') {
-                const timestamp = Date.now();
-                const filename = md5(timestamp + uniqueId + '@Anyt1nG');
+                const fileDirectory = db[index]['filesDirectory'];
+                const collection = query.entity.toLowerCase();
+                const objectJson = [query.conditions];
 
-                const stringToFile = JSON.stringify(object);
-                if (fileDirectory.substr(-1) === '/') {
-                    fs.writeFileSync(fileDirectory + filename, stringToFile);
-                } else {
-                    fs.writeFileSync(fileDirectory + '/' + filename, stringToFile);
-                }
-
-                let fileBuffer;
-
-                if (fileDirectory.substr(-1) === '/') {
-                    fileBuffer = fs.readFileSync(fileDirectory + filename);
-                } else {
-                    fileBuffer = fs.readFileSync(fileDirectory + '/' + filename);
-                }
-
-                const fileString = fileBuffer.toString();
-                resolve(fileString);
+                deleteDocumentPackage.hardDelete(fileDirectory, collection, objectJson)
+                    .then(res => {
+                        if (index < (db.length - 1)) {
+                            const newIndex = index + 1;
+                            result.push(res);
+                            hardDelete(db, query, newIndex, result)
+                                .then(resToRecursive => {
+                                    resolve(resToRecursive);
+                                })
+                                .catch(rejToRecursive => {
+                                    reject(rejToRecursive);
+                                })
+                        } else {
+                            result.push(res);
+                            resolve(result);
+                        }
+                    })
+                    .catch(rej => {
+                        reject(rej);
+                    })
             }
         } catch (error) {
             reject(error);

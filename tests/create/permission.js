@@ -19,7 +19,7 @@ const query = {
     action: 'create',
     entity: 'Permission',
     object: {
-        User_id: '5d30a0e536c9ad34044cc8c4',
+        User_id: '5c70277bec890412652d14da',
         crud: 'create',
         entity: 'User'
     }
@@ -27,8 +27,8 @@ const query = {
 
 crudPackage.crud(db, query)
     .then(res => {
-        console.log(res);
+        console.info(res);
     })
     .catch(rej => {
-        console.log(rej['message']);
+        console.error(rej['message']);
     })

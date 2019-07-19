@@ -21,8 +21,8 @@ const query = {
 
 crudPackage.crud(db, query)
     .then(res => {
-        console.log(res);
+        console.info(res);
     })
     .catch(rej => {
-        console.log(rej['message']);
+        console.error(rej['message']);
     })
