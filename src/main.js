@@ -5,6 +5,7 @@ const Sequelize = require('sequelize');
 // Packages
 const createDocumentPackage = require('../../create-document/index');
 const readDocumentPackage = require('../../read-document/index');
+const updateDocumentPackage = require('../../update-document/index');
 const deleteDocumentPackage = require('../../delete-document/index')
 
 /**
@@ -12,50 +13,53 @@ const deleteDocumentPackage = require('../../delete-document/index')
  * @param {Array<any>} db - Connection URI and diretory to models according to DB
  * @param {Object} query - Crud action, entity that will receive the action, object to populate entity if needed and conditions to populate if needed
  */
-const crud = (db = [], query = {}) => {
+const crud = (db = [], query = {}, index = 0, permissionArray = []) => {
     return new Promise((resolve, reject) => {
         try {
-            const permissionArray = [];
-            for (let i = 0; i < db.length; i++) {
-                const object = db[i];
+            if (index == 0) {
+                for (let i = 0; i < db.length; i++) {
+                    const object = db[i];
 
-                for (const key in object) {
-                    if (object.hasOwnProperty(key)) {
-                        if (key === 'permission') {
-                            permissionArray.push(object);
+                    for (const key in object) {
+                        if (object.hasOwnProperty(key)) {
+                            if (key === 'permission') {
+                                permissionArray.push(object);
+                            }
                         }
                     }
                 }
             }
 
             if (permissionArray.length > 0) {
-                const queryToPermission = {
-                    action: 'read',
-                    entity: 'Permission',
-                    conditions: {
-                        User_id: permissionArray[0].permission.User_id,
-                        crud: query.action,
-                        entity: query.entity
-                    }
-                }
-
-                permission([permissionArray[0]], queryToPermission)
-                    .then(res => {
-                        if (res.length < 1) {
-                            resolve(res);
-                        } else {
-                            crudAction(db, query)
-                                .then(resAction => {
-                                    resolve(resAction);
-                                })
-                                .catch(rejAction => {
-                                    reject(rejAction);
-                                });
+                if (permissionArray[0].permission.token) {
+                    const queryToPermission = {
+                        action: 'read',
+                        entity: 'Token',
+                        match: true,
+                        conditions: {
+                            _id: permissionArray[0].permission.token
                         }
-                    })
-                    .catch(rej => {
-                        reject(rej);
-                    })
+                    }
+
+                    permission([permissionArray[0]], queryToPermission, query)
+                        .then(res => {
+                            if (res.length < 1) {
+                                resolve(res);
+                            } else {
+                                crudAction(db, query)
+                                    .then(resAction => {
+                                        resolve(resAction);
+                                    })
+                                    .catch(rejAction => {
+                                        reject(rejAction);
+                                    });
+                            }
+                        })
+                        .catch(rej => {
+                            reject(rej);
+                        })
+                }
+                
             } else {
                 crudAction(db, query)
                     .then(resAction => {
@@ -134,7 +138,8 @@ const create = (db, query, index = 0, result = []) => {
                 });
                 connect
                     .then(resConnection => {
-                        const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
+                        const modelDirectory = (db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase();
+                        const modelSchema = require(modelDirectory);
                         const modelConnected = resConnection.model(query.entity, modelSchema);
                         const modelObject = new modelConnected(query.object);
                         const modelError = modelObject.validateSync();
@@ -153,8 +158,8 @@ const create = (db, query, index = 0, result = []) => {
                                     }
                                 }
                             }
-                            resolve(message);
                             resConnection.disconnect();
+                            resolve(message);
                         }
                         modelConnected
                             .create(query.object)
@@ -173,16 +178,17 @@ const create = (db, query, index = 0, result = []) => {
                                         })
                                 } else {
                                     result.push(docs);
-                                    resolve(result);
                                     resConnection.disconnect();
+                                    resolve(result);
                                 }
                             })
                             .catch(error => {
-                                reject(error);
                                 resConnection.disconnect();
+                                reject(error);
                             });
                     })
                     .catch(rejConnection => {
+                        mongoose.disconnect();
                         reject(rejConnection['message']);
                     });
             }
@@ -278,11 +284,15 @@ const read = (db, query, index = 0, result = []) => {
                 });
                 connect
                     .then(resConnection => {
-                        const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
+                        const modelDirectory = (db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase();
+                        const modelSchema = require(modelDirectory);
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-
+                        query.conditions['deletedAt'] = { $exists: false };
+                        
                         modelConnected
-                            .find({$and:[{deletedAt: {$exists: false}, ...query.conditions}]})
+                            .find({
+                                $and: [query.conditions]
+                            })
                             .then(docs => {
                                 if (index < (db.length - 1)) {
                                     const newIndex = index + 1;
@@ -308,20 +318,24 @@ const read = (db, query, index = 0, result = []) => {
                             });
                     })
                     .catch(rejConnection => {
+                        mongoose.disconnect();
                         reject(rejConnection['message']);
                     });
             }
 
             if (db[index].name === 'linuxdb') {
+                let option = {};
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                const objectJson = [query.conditions];
-
-                readDocumentPackage.read(fileDirectory, collection, objectJson)
+                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                const objectJson = query.conditions;
+                query.match ? option['match'] = true : option['match'] = false;
+                
+                readDocumentPackage.read(fileDirectory, collection, objectJson, option)
                     .then(res => {
                         if (index < (db.length - 1)) {
                             const newIndex = index + 1;
-                            result.push(res);
+                            result.push(res[0]);
                             read(db, query, newIndex, result)
                                 .then(resToRecursive => {
                                     resolve(resToRecursive);
@@ -330,7 +344,7 @@ const read = (db, query, index = 0, result = []) => {
                                     reject(rejToRecursive);
                                 })
                         } else {
-                            result.push(res);
+                            Array.isArray(res) ? result.push(res[0]) : result.push(res);
                             resolve(result);
                         }
                     })
@@ -344,7 +358,7 @@ const read = (db, query, index = 0, result = []) => {
     })
 }
 
-const update = (db, query, index = 0) => {
+const update = (db, query, index = 0, result = []) => {
     return new Promise((resolve, reject) => {
         try {
             if (db[index].name === 'mongodb') {
@@ -360,31 +374,29 @@ const update = (db, query, index = 0) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-                        const modelObject = new modelConnected(query.object);
-                        const modelError = modelObject.validateSync();
-                        const message = [];
-                        if (modelError && modelError.errors) {
-                            for (const key in modelError.errors) {
-                                if (modelError.errors.hasOwnProperty(key)) {
-                                    const errors = modelError.errors[key];
-                                    for (const k in errors) {
-                                        if (errors.hasOwnProperty(k)) {
-                                            const error = errors[k];
-                                            if (k === 'message') {
-                                                message.push(error);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            resolve(message);
-                            resConnection.disconnect();
-                        }
+                        query.conditions['deletedAt'] = { $exists: false };
                         modelConnected
-                            .updateMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]}, query.object)
+                            .updateMany({
+                                $and: [query.conditions]
+                            }, query.object)
                             .then(docs => {
-                                resolve(docs);
-                                resConnection.disconnect();
+                                if (index < (db.length - 1)) {
+                                    const newIndex = index + 1;
+                                    result.push(docs);
+                                    update(db, query, newIndex, result)
+                                        .then(resToRecursive => {
+                                            resolve(resToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                        .catch(rejToRecursive => {
+                                            reject(rejToRecursive);
+                                            resConnection.disconnect();
+                                        })
+                                } else {
+                                    result.push(docs);
+                                    resolve(result);
+                                    resConnection.disconnect();
+                                }
                             })
                             .catch(error => {
                                 reject(error);
@@ -392,31 +404,36 @@ const update = (db, query, index = 0) => {
                             });
                     })
                     .catch(rejConnection => {
+                        mongoose.disconnect();
                         reject(rejConnection['message']);
                     });
             }
 
             if (db[index].name === 'linuxdb') {
-                const timestamp = Date.now();
-                const filename = md5(timestamp + uniqueId + '@Anyt1nG');
+                const fileDirectory = db[index]['filesDirectory'];
+                const collection = query.entity.toLowerCase();
+                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
 
-                const stringToFile = JSON.stringify(object);
-                if (fileDirectory.substr(-1) === '/') {
-                    fs.writeFileSync(fileDirectory + filename, stringToFile);
-                } else {
-                    fs.writeFileSync(fileDirectory + '/' + filename, stringToFile);
-                }
-
-                let fileBuffer;
-
-                if (fileDirectory.substr(-1) === '/') {
-                    fileBuffer = fs.readFileSync(fileDirectory + filename);
-                } else {
-                    fileBuffer = fs.readFileSync(fileDirectory + '/' + filename);
-                }
-
-                const fileString = fileBuffer.toString();
-                resolve(fileString);
+                updateDocumentPackage.update(fileDirectory, collection, objectJson)
+                    .then(res => {
+                        if (index < (db.length - 1)) {
+                            const newIndex = index + 1;
+                            result.push(res);
+                            update(db, query, newIndex, result)
+                                .then(resToRecursive => {
+                                    resolve(resToRecursive);
+                                })
+                                .catch(rejToRecursive => {
+                                    reject(rejToRecursive);
+                                })
+                        } else {
+                            result.push(res);
+                            resolve(result);
+                        }
+                    })
+                    .catch(rej => {
+                        reject(rej);
+                    })
             }
         } catch (error) {
             reject(error);
@@ -440,9 +457,11 @@ const softDelete = (db, query, index = 0, result = []) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-
+                        query.conditions['deletedAt'] = { $exists: false };
                         modelConnected
-                            .updateMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]}, {
+                            .updateMany({
+                                $and: [query.conditions]
+                            }, {
                                 deletedAt: new Date()
                             })
                             .then(docs => {
@@ -470,37 +489,37 @@ const softDelete = (db, query, index = 0, result = []) => {
                             });
                     })
                     .catch(rejConnection => {
+                        mongoose.disconnect();
                         reject(rejConnection['message']);
                     });
             }
 
             if (db[index].name === 'linuxdb') {
-                if (db[index].name === 'linuxdb') {
-                    const fileDirectory = db[index]['filesDirectory'];
-                    const collection = query.entity.toLowerCase();
-                    const objectJson = [query.conditions];
-    
-                    deleteDocumentPackage.softDelete(fileDirectory, collection, objectJson)
-                        .then(res => {
-                            if (index < (db.length - 1)) {
-                                const newIndex = index + 1;
-                                result.push(res);
-                                softDelete(db, query, newIndex, result)
-                                    .then(resToRecursive => {
-                                        resolve(resToRecursive);
-                                    })
-                                    .catch(rejToRecursive => {
-                                        reject(rejToRecursive);
-                                    })
-                            } else {
-                                result.push(res);
-                                resolve(result);
-                            }
-                        })
-                        .catch(rej => {
-                            reject(rej);
-                        })
-                }
+                const fileDirectory = db[index]['filesDirectory'];
+                const collection = query.entity.toLowerCase();
+                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                const objectJson = [query.conditions];
+
+                deleteDocumentPackage.softDelete(fileDirectory, collection, objectJson)
+                    .then(res => {
+                        if (index < (db.length - 1)) {
+                            const newIndex = index + 1;
+                            result.push(res);
+                            softDelete(db, query, newIndex, result)
+                                .then(resToRecursive => {
+                                    resolve(resToRecursive);
+                                })
+                                .catch(rejToRecursive => {
+                                    reject(rejToRecursive);
+                                })
+                        } else {
+                            result.push(res);
+                            resolve(result);
+                        }
+                    })
+                    .catch(rej => {
+                        reject(rej);
+                    })
             }
         } catch (error) {
             reject(error);
@@ -525,9 +544,12 @@ const hardDelete = (db, query, index = 0, result = []) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
+                        query.conditions['deletedAt'] = { $exists: false };
 
                         modelConnected
-                            .deleteMany({$and:[{deletedAt: {$exists: false}, ...query.conditions}]})
+                            .deleteMany({
+                                $and: [query.conditions]
+                            })
                             .then(docs => {
                                 if (index < (db.length - 1)) {
                                     const newIndex = index + 1;
@@ -553,6 +575,7 @@ const hardDelete = (db, query, index = 0, result = []) => {
                             });
                     })
                     .catch(rejConnection => {
+                        mongoose.disconnect();
                         reject(rejConnection['message']);
                     });
             }
@@ -560,6 +583,7 @@ const hardDelete = (db, query, index = 0, result = []) => {
             if (db[index].name === 'linuxdb') {
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
+                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
                 const objectJson = [query.conditions];
 
                 deleteDocumentPackage.hardDelete(fileDirectory, collection, objectJson)
@@ -589,17 +613,46 @@ const hardDelete = (db, query, index = 0, result = []) => {
     })
 }
 
-const permission = (db, query) => {
+const permission = (db, queryToPermission, query) => {
     return new Promise((resolve, reject) => {
         try {
-            read(db, query)
+            read(db, queryToPermission)
                 .then(res => {
-                    resolve(res);
+                    if (res[0].groups && res[0].groups.length > 0) {
+                        // TO-DO - Group validation
+                        return false;
+                    } else {
+                        if (res[0].User_id) {
+                            const newQuery = {
+                                action: 'read',
+                                entity: 'Permission',
+                                conditions: {
+                                    User_id: res[0].User_id,
+                                    crud: query.action,
+                                    entity: query.entity
+                                }
+                            }
+                            
+                            read(db, newQuery)
+                                .then(resPermission => {
+                                    mongoose.disconnect();
+                                    resolve(resPermission);
+                                })
+                                .catch(rejPermission => {
+                                    mongoose.disconnect();
+                                    reject(rejPermission);
+                                })
+                        } else {
+                            reject(res);
+                        }
+                    }
                 })
                 .catch(rej => {
+                    mongoose.disconnect();
                     reject(rej);
                 });
         } catch (error) {
+            mongoose.disconnect();
             reject(error);
         }
     })

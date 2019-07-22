@@ -1,21 +1,27 @@
-const crudPackage = require('../index');
+const crudPackage = require('../../index');
 
 const db = [{
     name: "mongodb",
     connectionUri: "mongodb+srv://giryco:GiRyCo@2019QD@moderatoro-uo7is.gcp.mongodb.net/moderatoro?retryWrites=true",
     modelsDirectory: "/home/ofm/Projects/models/mongoose/"
+},
+{
+    name: 'linuxdb',
+    filesDirectory: '/home/ofm/Projects/resources/collections/'
 }];
 
 const query = {
     action: "update",
     entity: "User",
     object: {
-        username: "thalita",
-        password: "17003122b89ccb2a3d7d4970de0d91ae",
-        email: "thalitaxavier81@gmail.com"
+        groups: [{
+            Group_id: 'j3lg7o7jyeax1ox'
+        }, {
+            Group_id: '5d359c9576a52426d7d70ace'
+        }]
     },
     conditions: {
-        username: "thalita1"
+        username: "joao"
     }
 };
 
