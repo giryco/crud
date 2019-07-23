@@ -10,7 +10,7 @@ const db = [
         name: 'linuxdb',
         filesDirectory: '/home/ofm/Projects/resources/collections/',
         permission: {
-            User_id: '5d30a0e536c9ad34044cc8c4'
+            token: 'j3lgm08jyekawcv'
         }
     }
 ];
@@ -19,12 +19,12 @@ const query = {
     action: 'create',
     entity: 'Country',
     object: {
-        name: 'Afeganistão',
-        officialName: 'República Islâmica do Afeganistão',
-        numericCode: '004',
-        alpha2Code: 'AF',
-        alpha3Code: 'AFG',
-        cctld: '.af'
+        name: 'Ilhas de Aland',
+        officialName: 'Aland',
+        numericCode: '248',
+        alpha2Code: 'AX',
+        alpha3Code: 'ALA',
+        cctld: '.al'
     }
 };
 

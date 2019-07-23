@@ -16,6 +16,14 @@ const deleteDocumentPackage = require('../../delete-document/index')
 const crud = (db = [], query = {}, index = 0, permissionArray = []) => {
     return new Promise((resolve, reject) => {
         try {
+            if (db[index].name != 'mongodb' && db[index].name != 'linuxdb' && db[index].name != 'sequelize') {
+                const result = {
+                    message: 'Database option not found',
+                    status: 400
+                }
+
+                resolve(result);
+            }
             if (index == 0) {
                 for (let i = 0; i < db.length; i++) {
                     const object = db[i];
@@ -44,7 +52,13 @@ const crud = (db = [], query = {}, index = 0, permissionArray = []) => {
                     permission([permissionArray[0]], queryToPermission, query)
                         .then(res => {
                             if (res.length < 1) {
-                                resolve(res);
+                                const result = {
+                                    message: 'Unauthorized',
+                                    status: 401,
+                                    result: res
+                                };
+
+                                resolve(result);
                             } else {
                                 crudAction(db, query)
                                     .then(resAction => {
@@ -56,7 +70,23 @@ const crud = (db = [], query = {}, index = 0, permissionArray = []) => {
                             }
                         })
                         .catch(rej => {
-                            reject(rej);
+                            if (rej['message'] == 'Nothing found') {
+                                const result = {
+                                    message: 'Unauthorized',
+                                    status: 401,
+                                    result: rej
+                                };
+
+                                resolve(result);
+                            }
+                            
+                            const result = {
+                                message: rej['message'],
+                                status: 500,
+                                result: rej
+                            };
+
+                            resolve(result);
                         })
                 }
                 
@@ -323,11 +353,11 @@ const read = (db, query, index = 0, result = []) => {
                     });
             }
 
-            if (db[index].name === 'linuxdb') {
+            if (db[index].name === 'linuxdb') { // TO-DO - Work over AND and OR operators on READ
                 let option = {};
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                if (query.conditions && query.conditions['deletedAt']) delete query.conditions['deletedAt'];
                 const objectJson = query.conditions;
                 query.match ? option['match'] = true : option['match'] = false;
                 
@@ -626,6 +656,7 @@ const permission = (db, queryToPermission, query) => {
                             const newQuery = {
                                 action: 'read',
                                 entity: 'Permission',
+                                match: 'true',
                                 conditions: {
                                     User_id: res[0].User_id,
                                     crud: query.action,
