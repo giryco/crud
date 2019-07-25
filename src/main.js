@@ -43,7 +43,10 @@ const crud = (db = [], query = {}, index = 0, permissionArray = []) => {
                     const queryToPermission = {
                         action: 'read',
                         entity: 'Token',
-                        match: true,
+                        options: {
+                            match: true,
+                            and: true
+                        },
                         conditions: {
                             _id: permissionArray[0].permission.token
                         }
@@ -188,8 +191,13 @@ const create = (db, query, index = 0, result = []) => {
                                     }
                                 }
                             }
-                            resConnection.disconnect();
-                            resolve(message);
+                            mongoose.disconnect()
+                            .then(() => {
+                                resolve(message);
+                            })
+                            .catch(rejDisconnect => {
+                                reject(rejDisconnect);
+                            })
                         }
                         modelConnected
                             .create(query.object)
@@ -199,27 +207,52 @@ const create = (db, query, index = 0, result = []) => {
                                     result.push(docs);
                                     create(db, query, newIndex, result)
                                         .then(resToRecursive => {
-                                            resolve(resToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                resolve(resToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                         .catch(rejToRecursive => {
-                                            reject(rejToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                reject(rejToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                 } else {
                                     result.push(docs);
-                                    resConnection.disconnect();
-                                    resolve(result);
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(result);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 }
                             })
                             .catch(error => {
-                                resConnection.disconnect();
-                                reject(error);
+                                mongoose.disconnect()
+                                .then(() => {
+                                    reject(error);
+                                })
+                                .catch(rejDisconnect => {
+                                    reject(rejDisconnect);
+                                })
                             });
                     })
                     .catch(rejConnection => {
-                        mongoose.disconnect();
-                        reject(rejConnection['message']);
+                        mongoose.disconnect()
+                        .then(() => {
+                            reject(rejConnection['message']);
+                        })
+                        .catch(rejDisconnect => {
+                            reject(rejDisconnect);
+                        })
                     });
             }
 
@@ -329,27 +362,52 @@ const read = (db, query, index = 0, result = []) => {
                                     result.push(docs);
                                     read(db, query, newIndex, result)
                                         .then(resToRecursive => {
-                                            resolve(resToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                resolve(resToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                         .catch(rejToRecursive => {
-                                            reject(rejToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                reject(rejToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                 } else {
                                     result.push(docs);
-                                    resolve(result);
-                                    resConnection.disconnect();
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(result);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 }
                             })
                             .catch(error => {
-                                reject(error);
-                                resConnection.disconnect();
+                                mongoose.disconnect()
+                                .then(() => {
+                                    reject(error);
+                                })
+                                .catch(rejDisconnect => {
+                                    reject(rejDisconnect);
+                                })
                             });
                     })
                     .catch(rejConnection => {
-                        mongoose.disconnect();
-                        reject(rejConnection['message']);
+                        mongoose.disconnect()
+                        .then(() => {
+                            reject(rejConnection['message']);
+                        })
+                        .catch(rejDisconnect => {
+                            reject(rejDisconnect);
+                        })
                     });
             }
 
@@ -359,7 +417,7 @@ const read = (db, query, index = 0, result = []) => {
                 const collection = query.entity.toLowerCase();
                 if (query.conditions && query.conditions['deletedAt']) delete query.conditions['deletedAt'];
                 const objectJson = query.conditions;
-                query.match ? option['match'] = true : option['match'] = false;
+                if (query.option) option = query.option;
                 
                 readDocumentPackage.read(fileDirectory, collection, objectJson, option)
                     .then(res => {
@@ -415,27 +473,52 @@ const update = (db, query, index = 0, result = []) => {
                                     result.push(docs);
                                     update(db, query, newIndex, result)
                                         .then(resToRecursive => {
-                                            resolve(resToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                resolve(resToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                         .catch(rejToRecursive => {
-                                            reject(rejToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                reject(rejToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                 } else {
                                     result.push(docs);
-                                    resolve(result);
-                                    resConnection.disconnect();
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(result);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 }
                             })
                             .catch(error => {
-                                reject(error);
-                                resConnection.disconnect();
+                                mongoose.disconnect()
+                                .then(() => {
+                                    reject(error);
+                                })
+                                .catch(rejDisconnect => {
+                                    reject(rejDisconnect);
+                                })
                             });
                     })
                     .catch(rejConnection => {
-                        mongoose.disconnect();
-                        reject(rejConnection['message']);
+                        mongoose.disconnect()
+                        .then(() => {
+                            reject(rejConnection['message']);
+                        })
+                        .catch(rejDisconnect => {
+                            reject(rejDisconnect);
+                        })
                     });
             }
 
@@ -443,7 +526,8 @@ const update = (db, query, index = 0, result = []) => {
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
                 if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
-
+                const objectJson = query;
+                
                 updateDocumentPackage.update(fileDirectory, collection, objectJson)
                     .then(res => {
                         if (index < (db.length - 1)) {
@@ -500,27 +584,52 @@ const softDelete = (db, query, index = 0, result = []) => {
                                     result.push(docs);
                                     softDelete(db, query, newIndex, result)
                                         .then(resToRecursive => {
-                                            resolve(resToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                resolve(resToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                         .catch(rejToRecursive => {
-                                            reject(rejToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                reject(rejToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                 } else {
                                     result.push(docs);
-                                    resolve(result);
-                                    resConnection.disconnect();
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(result);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 }
                             })
                             .catch(error => {
-                                reject(error);
-                                resConnection.disconnect();
+                                mongoose.disconnect()
+                                .then(() => {
+                                    reject(error);
+                                })
+                                .catch(rejDisconnect => {
+                                    reject(rejDisconnect);
+                                })
                             });
                     })
                     .catch(rejConnection => {
-                        mongoose.disconnect();
-                        reject(rejConnection['message']);
+                        mongoose.disconnect()
+                        .then(() => {
+                            reject(rejConnection['message']);
+                        })
+                        .catch(rejDisconnect => {
+                            reject(rejDisconnect);
+                        })
                     });
             }
 
@@ -586,27 +695,52 @@ const hardDelete = (db, query, index = 0, result = []) => {
                                     result.push(docs);
                                     hardDelete(db, query, newIndex, result)
                                         .then(resToRecursive => {
-                                            resolve(resToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                resolve(resToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                         .catch(rejToRecursive => {
-                                            reject(rejToRecursive);
-                                            resConnection.disconnect();
+                                            mongoose.disconnect()
+                                            .then(() => {
+                                                reject(rejToRecursive);
+                                            })
+                                            .catch(rejDisconnect => {
+                                                reject(rejDisconnect);
+                                            })
                                         })
                                 } else {
                                     result.push(docs);
-                                    resolve(result);
-                                    resConnection.disconnect();
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(result);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 }
                             })
                             .catch(error => {
-                                reject(error);
-                                resConnection.disconnect();
+                                mongoose.disconnect()
+                                .then(() => {
+                                    reject(error);
+                                })
+                                .catch(rejDisconnect => {
+                                    reject(rejDisconnect);
+                                })
                             });
                     })
                     .catch(rejConnection => {
-                        mongoose.disconnect();
-                        reject(rejConnection['message']);
+                        mongoose.disconnect()
+                        .then(() => {
+                            reject(rejConnection['message']);
+                        })
+                        .catch(rejDisconnect => {
+                            reject(rejDisconnect);
+                        })
                     });
             }
 
@@ -656,7 +790,10 @@ const permission = (db, queryToPermission, query) => {
                             const newQuery = {
                                 action: 'read',
                                 entity: 'Permission',
-                                match: 'true',
+                                options: {
+                                    match: true,
+                                    and: true
+                                },
                                 conditions: {
                                     User_id: res[0].User_id,
                                     crud: query.action,
@@ -666,12 +803,22 @@ const permission = (db, queryToPermission, query) => {
                             
                             read(db, newQuery)
                                 .then(resPermission => {
-                                    mongoose.disconnect();
-                                    resolve(resPermission);
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        resolve(resPermission);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 })
                                 .catch(rejPermission => {
-                                    mongoose.disconnect();
-                                    reject(rejPermission);
+                                    mongoose.disconnect()
+                                    .then(() => {
+                                        reject(rejPermission);
+                                    })
+                                    .catch(rejDisconnect => {
+                                        reject(rejDisconnect);
+                                    })
                                 })
                         } else {
                             reject(res);
@@ -679,12 +826,22 @@ const permission = (db, queryToPermission, query) => {
                     }
                 })
                 .catch(rej => {
-                    mongoose.disconnect();
-                    reject(rej);
+                    mongoose.disconnect()
+                    .then(() => {
+                        reject(rej);
+                    })
+                    .catch(rejDisconnect => {
+                        reject(rejDisconnect);
+                    })
                 });
         } catch (error) {
-            mongoose.disconnect();
-            reject(error);
+            mongoose.disconnect()
+            .then(() => {
+                reject(error);
+            })
+            .catch(rejDisconnect => {
+                reject(rejDisconnect);
+            })
         }
     })
 }
