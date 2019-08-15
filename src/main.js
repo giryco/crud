@@ -350,7 +350,7 @@ const read = (db, query, index = 0, result = []) => {
                         const modelDirectory = (db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase();
                         const modelSchema = require(modelDirectory);
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-                        query.conditions['deletedAt'] = { $exists: false };
+                        query.conditions['_deletedAt'] = { $exists: false };
                         
                         modelConnected
                             .find({
@@ -415,7 +415,7 @@ const read = (db, query, index = 0, result = []) => {
                 let option = {};
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                if (query.conditions && query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                if (query.conditions && query.conditions['_deletedAt']) delete query.conditions['_deletedAt'];
                 const objectJson = query.conditions;
                 if (query.option) option = query.option;
                 
@@ -462,7 +462,7 @@ const update = (db, query, index = 0, result = []) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-                        query.conditions['deletedAt'] = { $exists: false };
+                        query.conditions['_deletedAt'] = { $exists: false };
                         modelConnected
                             .updateMany({
                                 $and: [query.conditions]
@@ -525,7 +525,7 @@ const update = (db, query, index = 0, result = []) => {
             if (db[index].name === 'linuxdb') {
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                if (query.conditions['_deletedAt']) delete query.conditions['_deletedAt'];
                 const objectJson = query;
                 
                 updateDocumentPackage.update(fileDirectory, collection, objectJson)
@@ -571,12 +571,12 @@ const softDelete = (db, query, index = 0, result = []) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-                        query.conditions['deletedAt'] = { $exists: false };
+                        query.conditions['_deletedAt'] = { $exists: false };
                         modelConnected
                             .updateMany({
                                 $and: [query.conditions]
                             }, {
-                                deletedAt: new Date()
+                                _deletedAt: new Date()
                             })
                             .then(docs => {
                                 if (index < (db.length - 1)) {
@@ -636,7 +636,7 @@ const softDelete = (db, query, index = 0, result = []) => {
             if (db[index].name === 'linuxdb') {
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                if (query.conditions['_deletedAt']) delete query.conditions['_deletedAt'];
                 const objectJson = [query.conditions];
 
                 deleteDocumentPackage.softDelete(fileDirectory, collection, objectJson)
@@ -683,7 +683,7 @@ const hardDelete = (db, query, index = 0, result = []) => {
                     .then(resConnection => {
                         const modelSchema = require((db[index]['modelsDirectory'].substr(-1) === '/') ? db[index]['modelsDirectory'] + query['entity'].toLowerCase() : db[index]['modelsDirectory'] + '/' + query['entity'].toLowerCase());
                         const modelConnected = resConnection.model(query.entity, modelSchema);
-                        query.conditions['deletedAt'] = { $exists: false };
+                        query.conditions['_deletedAt'] = { $exists: false };
 
                         modelConnected
                             .deleteMany({
@@ -747,7 +747,7 @@ const hardDelete = (db, query, index = 0, result = []) => {
             if (db[index].name === 'linuxdb') {
                 const fileDirectory = db[index]['filesDirectory'];
                 const collection = query.entity.toLowerCase();
-                if (query.conditions['deletedAt']) delete query.conditions['deletedAt'];
+                if (query.conditions['_deletedAt']) delete query.conditions['_deletedAt'];
                 const objectJson = [query.conditions];
 
                 deleteDocumentPackage.hardDelete(fileDirectory, collection, objectJson)
