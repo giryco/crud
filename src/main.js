@@ -339,7 +339,7 @@ const read = (db, query, index = 0, result = []) => {
             if (db[index].name === 'mongodb') {
                 if (!query.conditions) {
                     // TO-DO - readWithoutCondition
-                    resolve('No updates without conditions today');
+                    resolve('No reading without conditions today');
                     return false;
                 }
                 const connect = mongoose.connect(db[index].connectionUri, {
